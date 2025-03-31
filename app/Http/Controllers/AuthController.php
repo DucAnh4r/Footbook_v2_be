@@ -48,4 +48,33 @@ class AuthController extends Controller
             'user' => $user
         ], 201);
     }
+
+    public function login(Request $request)
+    {
+        // Kiểm tra dữ liệu đầu vào
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|string|email',
+            'password' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // Tìm user theo email
+        $user = User::where('email', $request->email)->first();
+
+        // Kiểm tra user tồn tại và mật khẩu đúng
+        if (!$user || !Hash::check($request->password, $user->password_hash)) {
+            return response()->json([
+                'message' => 'Email hoặc mật khẩu không đúng'
+            ], 401);
+        }
+
+        // Đăng nhập thành công
+        return response()->json([
+            'message' => 'Đăng nhập thành công',
+            'user' => $user
+        ]);
+    }
 }
