@@ -26,7 +26,7 @@ class User extends Authenticatable
         'address',
         'status'
     ];
-//Đức Anh bị điên
+
     protected $hidden = [
         'password_hash',
     ];
