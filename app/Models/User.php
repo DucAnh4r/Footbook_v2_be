@@ -91,4 +91,28 @@ class User extends Authenticatable
             ->where('status', 'blocked')
             ->with('addressee');
     }
+
+    // Posts created by this user
+    public function posts()
+    {
+        return $this->hasMany(Post::class, 'user_id');
+    }
+
+    // Comments made by this user
+    public function comments()
+    {
+        return $this->hasMany(Comment::class, 'user_id');
+    }
+
+    // Reactions made by this user
+    public function reactions()
+    {
+        return $this->hasMany(Reaction::class, 'user_id');
+    }
+
+    // Groups this user belongs to
+    public function groups()
+    {
+        return $this->belongsToMany(Group::class, 'group_members', 'user_id', 'group_id');
+    }
 }
