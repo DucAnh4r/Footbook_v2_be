@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class PrivateMessage extends Model
 {
+    use HasFactory;
+    
     protected $table = 'private_messages';
     public $timestamps = false; // Vì DB không có updated_at
 
@@ -25,5 +27,9 @@ class PrivateMessage extends Model
     {
         return $this->belongsTo(Conversation::class, 'conversation_id');
     }
+    
+    public function chatImage()
+    {
+        return $this->hasOne(ChatImage::class, 'message_id');
+    }
 }
-
