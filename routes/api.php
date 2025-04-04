@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RelationshipController;
 use App\Http\Controllers\PostController;
@@ -129,4 +130,10 @@ Route::prefix('groups')->group(function () {
 
     // Search for groups
     Route::get('/search/{query}', [GroupController::class, 'searchGroups']);
+});
+
+Route::prefix('chat')->group(function () {
+    Route::post('/send', [ChatController::class, 'sendMessage']); // Gửi tin nhắn
+    Route::get('/conversation/{id}', [ChatController::class, 'getMessages']); // Lấy tin nhắn
+    Route::get('/user/{id}/conversations', [ChatController::class, 'getUserConversations']); // Lấy danh sách cuộc trò chuyện
 });
