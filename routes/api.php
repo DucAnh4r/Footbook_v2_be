@@ -8,6 +8,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\RelationshipController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\GroupChatController;
 use App\Http\Controllers\ReactionController;
 use App\Http\Controllers\GroupController;
 
@@ -136,4 +137,31 @@ Route::prefix('chat')->group(function () {
     Route::post('/send', [ChatController::class, 'sendMessage']); // Gửi tin nhắn
     Route::get('/conversation/{id}', [ChatController::class, 'getMessages']); // Lấy tin nhắn
     Route::get('/user/{id}/conversations', [ChatController::class, 'getUserConversations']); // Lấy danh sách cuộc trò chuyện
+});
+
+// Group Chat Routes
+Route::prefix('group-chat')->group(function () {
+    // Tạo nhóm chat mới
+    Route::post('/create', [GroupChatController::class, 'createGroupChat']);
+    
+    // Gửi tin nhắn nhóm
+    Route::post('/send', [GroupChatController::class, 'sendGroupMessage']);
+    
+    // Lấy tin nhắn của nhóm
+    Route::get('/{group_id}/messages', [GroupChatController::class, 'getGroupMessages']);
+    
+    // Lấy danh sách nhóm chat của người dùng
+    Route::get('/user/{user_id}/groups', [GroupChatController::class, 'getUserGroupChats']);
+    
+    // Thêm thành viên vào nhóm
+    Route::post('/members/add', [GroupChatController::class, 'addGroupMember']);
+    
+    // Xóa thành viên khỏi nhóm
+    Route::post('/members/remove', [GroupChatController::class, 'removeGroupMember']);
+    
+    // Lấy danh sách thành viên của nhóm
+    Route::get('/{group_id}/members', [GroupChatController::class, 'getGroupMembers']);
+    
+    // Cập nhật thông tin nhóm
+    Route::put('/update', [GroupChatController::class, 'updateGroupChat']);
 });
