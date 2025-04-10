@@ -58,7 +58,7 @@ Route::prefix('relationships')->group(function () {
 });
 
 // Routes for posts
-Route::prefix('posts')->group(function () {
+Route::prefix('post')->group(function () {
     // Create post
     Route::post('/create', [PostController::class, 'createPost']);
 
@@ -76,6 +76,9 @@ Route::prefix('posts')->group(function () {
 
     // Get feed posts
     Route::get('/feed', [PostController::class, 'getFeedPosts']);
+
+    // Get user's images
+    Route::get('/user/images', [PostController::class, 'getUserImages']);
 });
 
 // Routes for comments
