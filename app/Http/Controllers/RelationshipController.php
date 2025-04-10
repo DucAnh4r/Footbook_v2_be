@@ -25,12 +25,12 @@ class RelationshipController extends Controller
         }
 
         // Kiểm tra xem đã có mối quan hệ chưa
-        $existingRelationship = Relationship::where(function($query) use ($request) {
+        $existingRelationship = Relationship::where(function ($query) use ($request) {
             $query->where('requester_id', $request->requester_id)
-                  ->where('addressee_id', $request->addressee_id);
-        })->orWhere(function($query) use ($request) {
+                ->where('addressee_id', $request->addressee_id);
+        })->orWhere(function ($query) use ($request) {
             $query->where('requester_id', $request->addressee_id)
-                  ->where('addressee_id', $request->requester_id);
+                ->where('addressee_id', $request->requester_id);
         })->first();
 
         if ($existingRelationship) {
@@ -70,9 +70,9 @@ class RelationshipController extends Controller
 
         // Tìm mối quan hệ
         $relationship = Relationship::where('requester_id', $request->requester_id)
-                                   ->where('addressee_id', $request->addressee_id)
-                                   ->where('status', 'pending')
-                                   ->first();
+            ->where('addressee_id', $request->addressee_id)
+            ->where('status', 'pending')
+            ->first();
 
         if (!$relationship) {
             return response()->json([
@@ -107,9 +107,9 @@ class RelationshipController extends Controller
 
         // Tìm mối quan hệ
         $relationship = Relationship::where('requester_id', $request->requester_id)
-                                   ->where('addressee_id', $request->addressee_id)
-                                   ->where('status', 'pending')
-                                   ->first();
+            ->where('addressee_id', $request->addressee_id)
+            ->where('status', 'pending')
+            ->first();
 
         if (!$relationship) {
             return response()->json([
@@ -141,12 +141,12 @@ class RelationshipController extends Controller
         }
 
         // Kiểm tra xem đã có mối quan hệ chưa
-        $existingRelationship = Relationship::where(function($query) use ($request) {
+        $existingRelationship = Relationship::where(function ($query) use ($request) {
             $query->where('requester_id', $request->user_id)
-                  ->where('addressee_id', $request->blocked_user_id);
-        })->orWhere(function($query) use ($request) {
+                ->where('addressee_id', $request->blocked_user_id);
+        })->orWhere(function ($query) use ($request) {
             $query->where('requester_id', $request->blocked_user_id)
-                  ->where('addressee_id', $request->user_id);
+                ->where('addressee_id', $request->user_id);
         })->first();
 
         if ($existingRelationship) {
@@ -187,9 +187,9 @@ class RelationshipController extends Controller
 
         // Tìm mối quan hệ
         $relationship = Relationship::where('requester_id', $request->user_id)
-                                    ->where('addressee_id', $request->blocked_user_id)
-                                    ->where('status', 'blocked')
-                                    ->first();
+            ->where('addressee_id', $request->blocked_user_id)
+            ->where('status', 'blocked')
+            ->first();
 
         if (!$relationship) {
             return response()->json([
@@ -221,14 +221,14 @@ class RelationshipController extends Controller
         }
 
         // Tìm mối quan hệ
-        $relationship = Relationship::where(function($query) use ($request) {
+        $relationship = Relationship::where(function ($query) use ($request) {
             $query->where('requester_id', $request->user_id)
-                  ->where('addressee_id', $request->friend_id);
-        })->orWhere(function($query) use ($request) {
+                ->where('addressee_id', $request->friend_id);
+        })->orWhere(function ($query) use ($request) {
             $query->where('requester_id', $request->friend_id)
-                  ->where('addressee_id', $request->user_id);
+                ->where('addressee_id', $request->user_id);
         })->where('status', 'accepted')
-          ->first();
+            ->first();
 
         if (!$relationship) {
             return response()->json([
@@ -260,9 +260,9 @@ class RelationshipController extends Controller
 
         // Lấy danh sách lời mời
         $sentRequests = Relationship::with('addressee')
-                                   ->where('requester_id', $request->user_id)
-                                   ->where('status', 'pending')
-                                   ->get();
+            ->where('requester_id', $request->user_id)
+            ->where('status', 'pending')
+            ->get();
 
         return response()->json([
             'sent_requests' => $sentRequests
@@ -285,9 +285,9 @@ class RelationshipController extends Controller
 
         // Lấy danh sách lời mời
         $receivedRequests = Relationship::with('requester')
-                                       ->where('addressee_id', $request->user_id)
-                                       ->where('status', 'pending')
-                                       ->get();
+            ->where('addressee_id', $request->user_id)
+            ->where('status', 'pending')
+            ->get();
 
         return response()->json([
             'received_requests' => $receivedRequests
@@ -310,22 +310,54 @@ class RelationshipController extends Controller
 
         // Lấy danh sách bạn bè từ cả hai chiều của mối quan hệ
         $friendsAsRequester = Relationship::with('addressee')
-                                         ->where('requester_id', $request->user_id)
-                                         ->where('status', 'accepted')
-                                         ->get()
-                                         ->pluck('addressee');
+            ->where('requester_id', $request->user_id)
+            ->where('status', 'accepted')
+            ->get()
+            ->pluck('addressee');
 
         $friendsAsAddressee = Relationship::with('requester')
-                                          ->where('addressee_id', $request->user_id)
-                                          ->where('status', 'accepted')
-                                          ->get()
-                                          ->pluck('requester');
+            ->where('addressee_id', $request->user_id)
+            ->where('status', 'accepted')
+            ->get()
+            ->pluck('requester');
 
         // Kết hợp cả hai danh sách
         $friends = $friendsAsRequester->merge($friendsAsAddressee);
 
         return response()->json([
             'friends' => $friends
+        ]);
+    }
+
+    /**
+     * Đếm số lượng bạn bè của người dùng
+     */
+    public function countFriends(Request $request)
+    {
+        // Kiểm tra dữ liệu đầu vào
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // Đếm bạn bè từ cả hai chiều của mối quan hệ
+        $countAsRequester = Relationship::where('requester_id', $request->user_id)
+            ->where('status', 'accepted')
+            ->count();
+
+        $countAsAddressee = Relationship::where('addressee_id', $request->user_id)
+            ->where('status', 'accepted')
+            ->count();
+
+        // Tổng số bạn bè
+        $totalFriends = $countAsRequester + $countAsAddressee;
+
+        return response()->json([
+            'user_id' => $request->user_id,
+            'friends_count' => $totalFriends
         ]);
     }
 
@@ -345,12 +377,12 @@ class RelationshipController extends Controller
         }
 
         // Tìm mối quan hệ
-        $relationship = Relationship::where(function($query) use ($request) {
+        $relationship = Relationship::where(function ($query) use ($request) {
             $query->where('requester_id', $request->user_id)
-                  ->where('addressee_id', $request->other_user_id);
-        })->orWhere(function($query) use ($request) {
+                ->where('addressee_id', $request->other_user_id);
+        })->orWhere(function ($query) use ($request) {
             $query->where('requester_id', $request->other_user_id)
-                  ->where('addressee_id', $request->user_id);
+                ->where('addressee_id', $request->user_id);
         })->first();
 
         if (!$relationship) {

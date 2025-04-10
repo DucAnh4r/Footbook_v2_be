@@ -19,7 +19,8 @@ class PostController extends Controller
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|exists:users,id',
             'content' => 'required|string',
-            'image_url' => 'nullable|url',
+            'images' => 'nullable|array',
+            'images.*' => 'url',
             'group_id' => 'nullable|exists:groups,id',
         ]);
 
@@ -35,25 +36,33 @@ class PostController extends Controller
             'created_at' => now(),
         ]);
 
-        // Add image if provided
-        if ($request->has('image_url')) {
+        $postImages = [];
+
+        // Add images if provided
+        if ($request->has('images') && is_array($request->images)) {
+            foreach ($request->images as $imageUrl) {
+                $postImage = PostImage::create([
+                    'post_id' => $post->id,
+                    'image_url' => $imageUrl,
+                    'created_at' => now(),
+                ]);
+                $postImages[] = $postImage;
+            }
+        }
+        // For backward compatibility - still support single image_url
+        elseif ($request->has('image_url')) {
             $postImage = PostImage::create([
                 'post_id' => $post->id,
                 'image_url' => $request->image_url,
                 'created_at' => now(),
             ]);
-            
-            // Return post with image
-            return response()->json([
-                'message' => 'Đã tạo bài viết thành công',
-                'post' => $post,
-                'image' => $postImage
-            ], 201);
+            $postImages[] = $postImage;
         }
-
+        
         return response()->json([
             'message' => 'Đã tạo bài viết thành công',
-            'post' => $post
+            'post' => $post,
+            'images' => $postImages
         ], 201);
     }
 
@@ -86,6 +95,8 @@ class PostController extends Controller
             'post_id' => 'required|exists:posts,id',
             'user_id' => 'required|exists:users,id',
             'content' => 'required|string',
+            'images' => 'nullable|array',
+            'images.*' => 'url',
         ]);
 
         if ($validator->fails()) {
@@ -102,9 +113,32 @@ class PostController extends Controller
             ], 403);
         }
 
-        // Update post
+        // Update post content
         $post->content = $request->content;
         $post->save();
+
+        // Update images if provided
+        if ($request->has('images')) {
+            // Delete existing images
+            PostImage::where('post_id', $post->id)->delete();
+            
+            // Add new images
+            $postImages = [];
+            foreach ($request->images as $imageUrl) {
+                $postImage = PostImage::create([
+                    'post_id' => $post->id,
+                    'image_url' => $imageUrl,
+                    'created_at' => now(),
+                ]);
+                $postImages[] = $postImage;
+            }
+            
+            return response()->json([
+                'message' => 'Đã cập nhật bài viết thành công',
+                'post' => $post,
+                'images' => $postImages
+            ]);
+        }
 
         return response()->json([
             'message' => 'Đã cập nhật bài viết thành công',

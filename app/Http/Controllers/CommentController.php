@@ -133,14 +133,37 @@ class CommentController extends Controller
 
         // Get comments
         $comments = Comment::with('user')
-                         ->where('post_id', $request->post_id)
-                         ->orderBy('created_at', 'desc')
-                         ->limit($limit)
-                         ->offset($offset)
-                         ->get();
+            ->where('post_id', $request->post_id)
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->offset($offset)
+            ->get();
 
         return response()->json([
             'comments' => $comments
+        ]);
+    }
+
+    /**
+     * Get comment count for a post
+     */
+    public function getPostCommentCount(Request $request)
+    {
+        // Validate input
+        $validator = Validator::make($request->all(), [
+            'post_id' => 'required|exists:posts,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // Đếm số lượng comments theo post_id
+        $count = Comment::where('post_id', $request->post_id)->count();
+
+        return response()->json([
+            'post_id' => $request->post_id,
+            'comment_count' => $count
         ]);
     }
 }

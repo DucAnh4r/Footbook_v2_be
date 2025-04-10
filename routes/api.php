@@ -16,6 +16,8 @@ use App\Http\Controllers\GroupController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+Route::get('/user/{id}', [UserController::class, 'getProfile']);
+
 // Route cập nhật thông tin người dùng
 Route::post('/update-avatar', [UserController::class, 'updateAvatar']);
 
@@ -47,6 +49,9 @@ Route::prefix('relationships')->group(function () {
 
     // Lấy danh sách bạn bè
     Route::get('/friends', [RelationshipController::class, 'getFriends']);
+
+    // Đếm số lượng bạn bè
+    Route::get('/count', [RelationshipController::class, 'countFriends']);
 
     // Kiểm tra trạng thái mối quan hệ
     Route::get('/check-status', [RelationshipController::class, 'checkRelationshipStatus']);
@@ -85,7 +90,13 @@ Route::prefix('comments')->group(function () {
     Route::delete('/delete', [CommentController::class, 'deleteComment']);
 
     // Get post comments
-    Route::get('/post/{post_id}', [CommentController::class, 'getPostComments']);
+    Route::get('/post', [CommentController::class, 'getPostComments']);
+
+    // Get comment count for a post
+    Route::get('/count', [CommentController::class, 'getPostCommentCount']);
+
+
+
 });
 
 // Routes for reactions
