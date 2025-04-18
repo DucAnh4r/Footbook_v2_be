@@ -18,7 +18,7 @@ class ReactionController extends Controller
         $validator = Validator::make($request->all(), [
             'post_id' => 'required|exists:posts,id',
             'user_id' => 'required|exists:users,id',
-            'type' => 'required|in:like,love,haha,sad,angry',
+            'type' => 'required|in:LIKE,LOVE,HAHA,WOW,SAD,ANGRY',
         ]);
 
         if ($validator->fails()) {
@@ -101,11 +101,12 @@ class ReactionController extends Controller
 
         // Đếm số lượng reactions theo loại
         $reactionCounts = [
-            'like' => 0,
-            'love' => 0,
-            'haha' => 0,
-            'sad' => 0,
-            'angry' => 0,
+            'LIKE' => 0,
+            'LOVE' => 0,
+            'HAHA' => 0,
+            'WOW' => 0,
+            'SAD' => 0,
+            'ANGRY' => 0,
             'total' => 0
         ];
 

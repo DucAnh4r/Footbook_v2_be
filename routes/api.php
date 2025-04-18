@@ -20,6 +20,7 @@ Route::get('/user/{id}', [UserController::class, 'getProfile']);
 
 // Route cập nhật thông tin người dùng
 Route::post('/update-avatar', [UserController::class, 'updateAvatar']);
+Route::post('/update-profile', [UserController::class, 'updateProfile']);
 
 // Routes cho chức năng relationships
 Route::prefix('relationships')->group(function () {
