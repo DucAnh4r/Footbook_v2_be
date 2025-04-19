@@ -76,7 +76,7 @@ Route::prefix('post')->group(function () {
     Route::get('/user/posts', [PostController::class, 'getUserPosts']);
 
     // Get feed posts
-    Route::get('/feed', [PostController::class, 'getFeedPosts']);
+    Route::get('/feed/{user_id}', [PostController::class, 'getFeedPosts']);
 
     // Get user's images
     Route::get('/user/images', [PostController::class, 'getUserImages']);

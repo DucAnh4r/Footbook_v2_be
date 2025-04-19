@@ -17,6 +17,7 @@ class Post extends Model
         'content',
         'group_id',
         'created_at',
+        'privacy'
     ];
 
     // Relationships

@@ -15,14 +15,27 @@ class PostController extends Controller
      */
     public function createPost(Request $request)
     {
-        // Validate input data
+        // Validate input data cơ bản
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|exists:users,id',
-            'content' => 'required|string',
+            'content' => 'nullable|string',
             'images' => 'nullable|array',
             'images.*' => 'url',
             'group_id' => 'nullable|exists:groups,id',
+            'privacy' => 'required|in:public,friends,secret',
+            'image_url' => 'nullable|url' // Cho trường hợp ảnh đơn
         ]);
+
+        // Custom validation logic: content hoặc images phải tồn tại
+        $validator->after(function ($validator) use ($request) {
+            $hasContent = $request->filled('content');
+            $hasImages = $request->has('images') && is_array($request->images) && count($request->images) > 0;
+            $hasSingleImage = $request->filled('image_url');
+
+            if (!$hasContent && !$hasImages && !$hasSingleImage) {
+                $validator->errors()->add('content', 'Vui lòng nhập nội dung hoặc ít nhất một ảnh.');
+            }
+        });
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
@@ -34,6 +47,7 @@ class PostController extends Controller
             'content' => $request->content,
             'group_id' => $request->group_id,
             'created_at' => now(),
+            'privacy' => $request->privacy
         ]);
 
         $postImages = [];
@@ -49,7 +63,7 @@ class PostController extends Controller
                 $postImages[] = $postImage;
             }
         }
-        // For backward compatibility - still support single image_url
+        // Single image_url fallback
         elseif ($request->has('image_url')) {
             $postImage = PostImage::create([
                 'post_id' => $post->id,
@@ -65,6 +79,7 @@ class PostController extends Controller
             'images' => $postImages
         ], 201);
     }
+
 
     /**
      * Get post details
@@ -215,17 +230,22 @@ class PostController extends Controller
     /**
      * Get feed posts (posts from friends and groups)
      */
-    public function getFeedPosts(Request $request)
+    public function getFeedPosts($user_id, Request $request)
     {
-        // Validate input data
+        // Validate chỉ limit và offset
         $validator = Validator::make($request->all(), [
-            'user_id' => 'required|exists:users,id',
             'limit' => 'nullable|integer|min:1',
             'offset' => 'nullable|integer|min:0',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // Validate user_id
+        $user = User::find($user_id);
+        if (!$user) {
+            return response()->json(['message' => 'Không tìm thấy người dùng'], 404);
         }
 
         // Set pagination parameters
@@ -236,27 +256,41 @@ class PostController extends Controller
         $user = User::find($request->user_id);
         $friends = $user->friends()->pluck('id')->toArray();
 
-        // Add user's own ID to the list
-        $friends[] = $user->id;
-
-        // Get user's groups
-        $groups = $user->groups()->pluck('id')->toArray();
-
-        // Get posts from friends and groups
+        // Get posts
         $posts = Post::with(['user', 'images', 'comments', 'reactions'])
-            ->where(function ($query) use ($friends, $groups) {
-                $query->whereIn('user_id', $friends)
-                    ->orWhereIn('group_id', $groups);
+            ->where(function ($query) use ($user, $friends) {
+                // Bài viết công khai
+                $query->where('privacy', 'public');
+
+                // Hoặc bài viết từ bạn bè có privacy là friends
+                if (!empty($friends)) {
+                    $query->orWhere(function ($q) use ($friends) {
+                        $q->whereIn('user_id', $friends)
+                            ->where('privacy', 'friends');
+                    });
+                }
+
+                // Hoặc bài viết của chính người dùng (bao gồm tất cả privacy levels)
+                $query->orWhere('user_id', $user->id);
             })
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->offset($offset)
             ->get();
 
+        // Kiểm tra nếu không có bài viết nào
+        if ($posts->isEmpty()) {
+            return response()->json([
+                'message' => 'Không có bài viết nào trong feed',
+                'posts' => []
+            ], 200); // Trả về 200 thay vì 404 vì đây là tình huống hợp lệ
+        }
+
         return response()->json([
             'posts' => $posts
         ]);
     }
+
 
     /**
      * Get all images from a specific user

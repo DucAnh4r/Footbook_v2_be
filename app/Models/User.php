@@ -11,7 +11,7 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    protected $table = 'users'; // Khai báo đúng tên bảng
+    protected $table = 'users';
 
     protected $fillable = [
         'name',
@@ -36,81 +36,79 @@ class User extends Authenticatable
         $this->attributes['password_hash'] = Hash::make($value);
     }
 
-    // Thêm các relationships với bảng relationships
-
-    // Các mối quan hệ mà user này là người gửi lời mời
+    // Gửi lời mời kết bạn
     public function sentRelationships()
     {
         return $this->hasMany(Relationship::class, 'requester_id');
     }
 
-    // Các mối quan hệ mà user này là người nhận lời mời
+    // Nhận lời mời kết bạn
     public function receivedRelationships()
     {
         return $this->hasMany(Relationship::class, 'addressee_id');
     }
 
-    // Danh sách bạn bè (bao gồm cả hai hướng của mối quan hệ)
-    public function friends()
+    /**
+     * Trả về danh sách bạn bè thông qua pivot, có thể dùng trong query Eloquent.
+     * Lưu ý: đây là các user được bạn gửi lời mời và đã được chấp nhận
+     */
+    public function friendsOfMine()
     {
-        $friendsAsRequester = $this->sentRelationships()
-            ->where('status', 'accepted')
-            ->with('addressee')
-            ->get()
-            ->pluck('addressee');
-
-        $friendsAsAddressee = $this->receivedRelationships()
-            ->where('status', 'accepted')
-            ->with('requester')
-            ->get()
-            ->pluck('requester');
-
-        return $friendsAsRequester->merge($friendsAsAddressee);
+        return $this->belongsToMany(User::class, 'relationships', 'requester_id', 'addressee_id')
+            ->wherePivot('status', 'accepted');
     }
 
-    // Danh sách lời mời kết bạn đã gửi
+    // Những người đã gửi lời mời và mình đã chấp nhận
+    public function friendOf()
+    {
+        return $this->belongsToMany(User::class, 'relationships', 'addressee_id', 'requester_id')
+            ->wherePivot('status', 'accepted');
+    }
+
+    /**
+     * Truy xuất tất cả bạn bè (cả 2 chiều)
+     */
+    public function friends()
+    {
+        return $this->friendsOfMine->merge($this->friendOf)->unique('id');
+    }
+
+    // Lời mời kết bạn đã gửi
     public function friendRequestsSent()
     {
         return $this->sentRelationships()
-            ->where('status', 'pending')
-            ->with('addressee');
+            ->where('status', 'pending');
     }
 
-    // Danh sách lời mời kết bạn đã nhận
+    // Lời mời kết bạn đã nhận
     public function friendRequestsReceived()
     {
         return $this->receivedRelationships()
-            ->where('status', 'pending')
-            ->with('requester');
+            ->where('status', 'pending');
     }
 
-    // Danh sách người dùng đã chặn
+    // Người dùng bị chặn
     public function blockedUsers()
     {
         return $this->sentRelationships()
-            ->where('status', 'blocked')
-            ->with('addressee');
+            ->where('status', 'blocked');
     }
 
-    // Posts created by this user
     public function posts()
     {
         return $this->hasMany(Post::class, 'user_id');
     }
 
-    // Comments made by this user
     public function comments()
     {
         return $this->hasMany(Comment::class, 'user_id');
     }
 
-    // Reactions made by this user
     public function reactions()
     {
         return $this->hasMany(Reaction::class, 'user_id');
     }
 
-    // Groups this user belongs to
     public function groups()
     {
         return $this->belongsToMany(Group::class, 'group_members', 'user_id', 'group_id');
