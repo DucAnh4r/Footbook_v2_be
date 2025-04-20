@@ -28,19 +28,19 @@ Route::prefix('relationships')->group(function () {
     Route::post('/send-request', [RelationshipController::class, 'sendFriendRequest']);
 
     // Chấp nhận lời mời kết bạn
-    Route::post('/accept-request', [RelationshipController::class, 'acceptFriendRequest']);
+    Route::put('/accept-request', [RelationshipController::class, 'acceptFriendRequest']);
 
     // Từ chối lời mời kết bạn
-    Route::post('/decline-request', [RelationshipController::class, 'declineFriendRequest']);
+    Route::put('/decline-request', [RelationshipController::class, 'declineFriendRequest']);
 
     // Chặn người dùng
-    Route::post('/block', [RelationshipController::class, 'blockUser']);
+    Route::put('/block', [RelationshipController::class, 'blockUser']);
 
     // Bỏ chặn người dùng
-    Route::post('/unblock', [RelationshipController::class, 'unblockUser']);
+    Route::put('/unblock', [RelationshipController::class, 'unblockUser']);
 
     // Hủy kết bạn
-    Route::post('/unfriend', [RelationshipController::class, 'unfriend']);
+    Route::delete('/unfriend', [RelationshipController::class, 'unfriend']);
 
     // Lấy danh sách lời mời kết bạn đã gửi
     Route::get('/sent-requests', [RelationshipController::class, 'getSentFriendRequests']);
