@@ -80,6 +80,12 @@ Route::prefix('post')->group(function () {
 
     // Get user's images
     Route::get('/user/images', [PostController::class, 'getUserImages']);
+
+    // Share post
+    Route::post('/share', [PostController::class, 'sharePost']);
+
+    // Get shared post with original post details
+    Route::get('/shared/{id}', [PostController::class, 'getSharedPost']);
 });
 
 // Routes for comments
@@ -98,9 +104,6 @@ Route::prefix('comments')->group(function () {
 
     // Get comment count for a post
     Route::get('/count', [CommentController::class, 'getPostCommentCount']);
-
-
-
 });
 
 // Routes for reactions
@@ -158,25 +161,25 @@ Route::prefix('chat')->group(function () {
 Route::prefix('group-chat')->group(function () {
     // Tạo nhóm chat mới
     Route::post('/create', [GroupChatController::class, 'createGroupChat']);
-    
+
     // Gửi tin nhắn nhóm
     Route::post('/send', [GroupChatController::class, 'sendGroupMessage']);
-    
+
     // Lấy tin nhắn của nhóm
     Route::get('/{group_id}/messages', [GroupChatController::class, 'getGroupMessages']);
-    
+
     // Lấy danh sách nhóm chat của người dùng
     Route::get('/user/{user_id}/groups', [GroupChatController::class, 'getUserGroupChats']);
-    
+
     // Thêm thành viên vào nhóm
     Route::post('/members/add', [GroupChatController::class, 'addGroupMember']);
-    
+
     // Xóa thành viên khỏi nhóm
     Route::post('/members/remove', [GroupChatController::class, 'removeGroupMember']);
-    
+
     // Lấy danh sách thành viên của nhóm
     Route::get('/{group_id}/members', [GroupChatController::class, 'getGroupMembers']);
-    
+
     // Cập nhật thông tin nhóm
     Route::put('/update', [GroupChatController::class, 'updateGroupChat']);
 });

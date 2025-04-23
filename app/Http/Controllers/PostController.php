@@ -351,4 +351,88 @@ class PostController extends Controller
             'images' => $paginatedImages
         ]);
     }
+
+    /**
+     * Share an existing post
+     */
+    public function sharePost(Request $request)
+    {
+        // Validate input data
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'post_id' => 'required|exists:posts,id',
+            'content' => 'nullable|string',
+            'privacy' => 'required|in:public,friends,secret',
+            'group_id' => 'nullable|exists:groups,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // Check if post exists and is not deleted
+        $originalPost = Post::find($request->post_id);
+        if (!$originalPost) {
+            return response()->json([
+                'message' => 'Không tìm thấy bài viếttttttttttttttttttttt'
+            ], 404);
+        }
+
+        if ($originalPost->isDeleted == 1) {
+            return response()->json([
+                'message' => 'Bài viết gốc đã bị xóa'
+            ], 400);
+        }
+
+        // Create shared post
+        $sharedPost = Post::create([
+            'user_id' => $request->user_id,
+            'content' => $request->content,
+            'shareId' => $request->post_id,
+            'group_id' => $request->group_id,
+            'created_at' => now(),
+            'privacy' => $request->privacy,
+            'isDeleted' => 0
+        ]);
+
+        return response()->json([
+            'message' => 'Đã chia sẻ bài viết thành công',
+            'post' => $sharedPost
+        ], 201);
+    }
+
+    /**
+     * Get shared post with original post details
+     */
+    public function getSharedPost($id)
+    {
+        $post = Post::with(['user', 'comments', 'reactions'])
+            ->find($id);
+
+        if (!$post) {
+            return response()->json([
+                'message' => 'Không tìm thấy bài viết'
+            ], 404);
+        }
+
+        // If this is a shared post, get the original post data
+        if ($post->shareId) {
+            $originalPost = Post::with(['user', 'images', 'comments', 'reactions'])
+                ->find($post->shareId);
+
+            // Check if original post exists and is not deleted
+            if ($originalPost && !$originalPost->isDeleted) {
+                $post->originalPost = $originalPost;
+            } else {
+                $post->originalPost = [
+                    'isDeleted' => true,
+                    'message' => 'Bài viết gốc đã bị xóa hoặc không tồn tại'
+                ];
+            }
+        }
+
+        return response()->json([
+            'post' => $post
+        ]);
+    }
 }

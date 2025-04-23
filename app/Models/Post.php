@@ -17,7 +17,20 @@ class Post extends Model
         'content',
         'group_id',
         'created_at',
-        'privacy'
+        'privacy',
+        'shareId',
+        'isDeleted'
+    ];
+
+    // Add defaults for new fields
+    protected $attributes = [
+        'isDeleted' => false,
+        'shareId' => null
+    ];
+
+    // Make sure booleans are cast properly
+    protected $casts = [
+        'isDeleted' => 'boolean'
     ];
 
     // Relationships
@@ -44,5 +57,17 @@ class Post extends Model
     public function group()
     {
         return $this->belongsTo(Group::class, 'group_id');
+    }
+
+    // Add relationship to original post
+    public function originalPost()
+    {
+        return $this->belongsTo(Post::class, 'shareId');
+    }
+
+    // Add relationship to shared posts
+    public function sharedPosts()
+    {
+        return $this->hasMany(Post::class, 'shareId')->where('isDeleted', false);
     }
 }
