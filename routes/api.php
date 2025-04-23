@@ -66,8 +66,14 @@ Route::prefix('post')->group(function () {
     // Get post details
     Route::get('/{id}', [PostController::class, 'getPost']);
 
-    // Update post
-    Route::put('/update', [PostController::class, 'updatePost']);
+    // ✅ Update post content
+    Route::put('/update-content', [PostController::class, 'updatePostContent']);
+
+    // ✅ Add image to post
+    Route::post('/add-image', [PostController::class, 'addImageToPost']);
+
+    // ✅ Delete image from post
+    Route::delete('/delete-image', [PostController::class, 'deleteImageFromPost']);
 
     // Delete post
     Route::delete('/delete', [PostController::class, 'deletePost']);
@@ -86,6 +92,9 @@ Route::prefix('post')->group(function () {
 
     // Get shared post with original post details
     Route::get('/shared/{id}', [PostController::class, 'getSharedPost']);
+
+    // Get shares count and details for a post
+    Route::get('/{post_id}/shares', [PostController::class, 'getPostShares']);
 });
 
 // Routes for comments

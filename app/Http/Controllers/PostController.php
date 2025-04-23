@@ -103,66 +103,92 @@ class PostController extends Controller
     /**
      * Update a post
      */
-    public function updatePost(Request $request)
+    public function updatePostContent(Request $request)
     {
-        // Validate input data
         $validator = Validator::make($request->all(), [
             'post_id' => 'required|exists:posts,id',
             'user_id' => 'required|exists:users,id',
             'content' => 'required|string',
-            'images' => 'nullable|array',
-            'images.*' => 'url',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // Find post
         $post = Post::find($request->post_id);
 
-        // Check if user is the owner of the post
         if ($post->user_id != $request->user_id) {
-            return response()->json([
-                'message' => 'Bạn không có quyền chỉnh sửa bài viết này'
-            ], 403);
+            return response()->json(['message' => 'Bạn không có quyền chỉnh sửa bài viết này'], 403);
         }
 
-        // Update post content
         $post->content = $request->content;
         $post->save();
 
-        // Update images if provided
-        if ($request->has('images')) {
-            // Delete existing images
-            PostImage::where('post_id', $post->id)->delete();
-
-            // Add new images
-            $postImages = [];
-            foreach ($request->images as $imageUrl) {
-                $postImage = PostImage::create([
-                    'post_id' => $post->id,
-                    'image_url' => $imageUrl,
-                    'created_at' => now(),
-                ]);
-                $postImages[] = $postImage;
-            }
-
-            return response()->json([
-                'message' => 'Đã cập nhật bài viết thành công',
-                'post' => $post,
-                'images' => $postImages
-            ]);
-        }
-
         return response()->json([
-            'message' => 'Đã cập nhật bài viết thành công',
+            'message' => 'Đã cập nhật nội dung bài viết thành công',
             'post' => $post
         ]);
     }
 
+    public function addImageToPost(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'post_id' => 'required|exists:posts,id',
+            'user_id' => 'required|exists:users,id',
+            'image_url' => 'required|url',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $post = Post::find($request->post_id);
+
+        if ($post->user_id != $request->user_id) {
+            return response()->json(['message' => 'Bạn không có quyền thêm ảnh vào bài viết này'], 403);
+        }
+
+        $image = PostImage::create([
+            'post_id' => $post->id,
+            'image_url' => $request->image_url,
+            'created_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Đã thêm ảnh vào bài viết thành công',
+            'image' => $image
+        ]);
+    }
+
+    public function deleteImageFromPost(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'image_id' => 'required|exists:post_images,id',
+            'user_id' => 'required|exists:users,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $image = PostImage::find($request->image_id);
+        $post = $image->post;
+
+        if (!$post || $post->user_id != $request->user_id) {
+            return response()->json(['message' => 'Bạn không có quyền xóa ảnh này'], 403);
+        }
+
+        $image->delete();
+
+        return response()->json([
+            'message' => 'Đã xóa ảnh khỏi bài viết thành công'
+        ]);
+    }
+
+
+
     /**
-     * Delete a post
+     * Delete (soft) a post
      */
     public function deletePost(Request $request)
     {
@@ -186,13 +212,15 @@ class PostController extends Controller
             ], 403);
         }
 
-        // Delete post (this will also delete associated images, comments, and reactions through cascade)
-        $post->delete();
+        // Set isDeleted = true instead of deleting the post
+        $post->isDeleted = true;
+        $post->save();
 
         return response()->json([
-            'message' => 'Đã xóa bài viết thành công'
+            'message' => 'Đã xóa bài viết thành công (xóa mềm)'
         ]);
     }
+
 
     /**
      * Get user's posts
@@ -433,6 +461,36 @@ class PostController extends Controller
 
         return response()->json([
             'post' => $post
+        ]);
+    }
+
+    /**
+     * Get share count and details for a post
+     */
+    public function getPostShares($post_id)
+    {
+        // Validate if post exists
+        $post = Post::find($post_id);
+        if (!$post) {
+            return response()->json([
+                'message' => 'Không tìm thấy bài viết'
+            ], 404);
+        }
+
+        // Get shared posts
+        $sharedPosts = Post::with(['user'])
+            ->where('shareId', $post_id)
+            ->where('isDeleted', 0)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Count shares
+        $shareCount = $sharedPosts->count();
+
+        return response()->json([
+            'post_id' => (int)$post_id,
+            'share_count' => $shareCount,
+            'shared_posts' => $sharedPosts
         ]);
     }
 }
