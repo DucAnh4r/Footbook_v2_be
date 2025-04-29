@@ -91,15 +91,13 @@ class ChatController extends Controller
         return response()->json(['messages' => $messages]);
     }
 
-    // Lấy danh sách cuộc trò chuyện của một user
     public function getUserConversations($user_id)
     {
         $conversations = Conversation::where('user1_id', $user_id)
             ->orWhere('user2_id', $user_id)
-            ->orderBy('created_at', 'desc')
             ->get();
 
-        // Load tin nhắn cuối cùng cho mỗi cuộc trò chuyện
+        // Gắn last_message và other_user
         foreach ($conversations as $conversation) {
             $lastMessage = PrivateMessage::where('conversation_id', $conversation->id)
                 ->orderBy('created_at', 'desc')
@@ -111,14 +109,17 @@ class ChatController extends Controller
 
             $conversation->last_message = $lastMessage;
 
-            // Lấy thông tin người dùng khác
-            if ($conversation->user1_id == $user_id) {
-                $conversation->other_user = User::find($conversation->user2_id);
-            } else {
-                $conversation->other_user = User::find($conversation->user1_id);
-            }
+            // Lấy người đối thoại
+            $conversation->other_user = ($conversation->user1_id == $user_id)
+                ? User::find($conversation->user2_id)
+                : User::find($conversation->user1_id);
         }
 
-        return response()->json(['conversations' => $conversations]);
+        // ✅ Sắp xếp lại theo thời gian tin nhắn mới nhất
+        $sorted = $conversations->sortByDesc(function ($conv) {
+            return optional($conv->last_message)->created_at;
+        })->values(); // reset chỉ số
+
+        return response()->json(['conversations' => $sorted]);
     }
 }
