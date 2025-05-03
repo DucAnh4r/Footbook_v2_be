@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -117,6 +118,35 @@ class UserController extends Controller
         return response()->json([
             'message' => 'Lấy thông tin thành công',
             'user' => $user
+        ]);
+    }
+
+    public function searchUsers(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'keyword' => 'required|string|min:1',
+            'limit' => 'nullable|integer|min:1|max:100',
+            'offset' => 'nullable|integer|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $keyword = $request->keyword;
+        $limit = $request->input('limit', 100); // mặc định 100
+        $offset = $request->input('offset', 0); // mặc định 0
+
+        $users = User::where('name', 'LIKE', '%' . $keyword . '%')
+            ->orWhere('email', 'LIKE', '%' . $keyword . '%') // nếu muốn hỗ trợ email
+            ->offset($offset)
+            ->limit($limit)
+            ->select(['id', 'name', 'avatar_url']) // chỉ lấy những trường cần thiết
+            ->get();
+
+        return response()->json([
+            'message' => 'Tìm kiếm thành công',
+            'results' => $users
         ]);
     }
 }

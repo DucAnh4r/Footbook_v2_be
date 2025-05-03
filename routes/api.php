@@ -17,6 +17,7 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::get('/user/{id}', [UserController::class, 'getProfile']);
+Route::get('/users/search', [UserController::class, 'searchUsers']);
 
 // Route cập nhật thông tin người dùng
 Route::post('/update-avatar', [UserController::class, 'updateAvatar']);
