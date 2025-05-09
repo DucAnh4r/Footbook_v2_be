@@ -57,6 +57,8 @@ Route::prefix('relationships')->group(function () {
 
     // Kiểm tra trạng thái mối quan hệ
     Route::get('/check-status', [RelationshipController::class, 'checkRelationshipStatus']);
+
+    Route::get('/suggested', [RelationshipController::class, 'getSuggestedFriends']);
 });
 
 // Routes for posts
