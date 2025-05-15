@@ -165,6 +165,7 @@ Route::prefix('groups')->group(function () {
 
 Route::prefix('chat')->group(function () {
     Route::post('/send', [ChatController::class, 'sendMessage']); // Gửi tin nhắn
+    Route::get('/conversation/between/{user1_id}/{user2_id}', [App\Http\Controllers\ChatController::class, 'getConversationBetweenUsers']);
     Route::get('/conversation/{id}', [ChatController::class, 'getMessages']); // Lấy tin nhắn
     Route::get('/user/{id}/conversations', [ChatController::class, 'getUserConversations']); // Lấy danh sách cuộc trò chuyện
 });

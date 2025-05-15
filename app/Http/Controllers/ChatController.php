@@ -30,6 +30,44 @@ class ChatController extends Controller
         return $conversation;
     }
 
+    public function getConversationBetweenUsers($user1_id, $user2_id)
+    {
+        // Kiểm tra người dùng tồn tại
+        $user1 = User::find($user1_id);
+        $user2 = User::find($user2_id);
+
+        if (!$user1 || !$user2) {
+            return response()->json(['error' => 'Không tìm thấy người dùng'], 404);
+        }
+
+        // Sử dụng hàm đã có để tìm cuộc trò chuyện
+        $conversation = $this->getOrCreateConversation($user1_id, $user2_id);
+
+        // Lấy tin nhắn của cuộc trò chuyện
+        $messages = PrivateMessage::where('conversation_id', $conversation->id)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        // Load dữ liệu ảnh cho tin nhắn ảnh
+        foreach ($messages as $message) {
+            if ($message->type == 'image') {
+                $message->image = ChatImage::where('message_id', $message->id)->first();
+            }
+        }
+
+        // Thêm thông tin người dùng
+        $userData = [
+            'user1' => $user1,
+            'user2' => $user2
+        ];
+
+        return response()->json([
+            'conversation' => $conversation,
+            'users' => $userData,
+            'messages' => $messages
+        ]);
+    }
+
     // Gửi tin nhắn văn bản hoặc ảnh
     public function sendMessage(Request $request)
     {
