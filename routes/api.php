@@ -102,7 +102,7 @@ Route::prefix('post')->group(function () {
 
 // Routes for comments
 Route::prefix('comments')->group(function () {
-    // Add comment
+    // Add comment (đã hỗ trợ parent_id để thêm trả lời)
     Route::post('/add', [CommentController::class, 'addComment']);
 
     // Update comment
@@ -111,10 +111,13 @@ Route::prefix('comments')->group(function () {
     // Delete comment
     Route::delete('/delete', [CommentController::class, 'deleteComment']);
 
-    // Get post comments
+    // Get post comments (chỉ lấy comment gốc)
     Route::get('/post', [CommentController::class, 'getPostComments']);
+    
+    // Route mới: Get replies for a comment
+    Route::get('/replies', [CommentController::class, 'getCommentReplies']);
 
-    // Get comment count for a post
+    // Get comment count for a post (cập nhật đếm cả parent comments và replies)
     Route::get('/count', [CommentController::class, 'getPostCommentCount']);
 });
 
