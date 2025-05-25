@@ -17,6 +17,9 @@ use App\Http\Controllers\GroupController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+// Route làm mới token (không cần xác thực)
+Route::post('/refresh-token', [AuthController::class, 'refreshToken']); // Di chuyển ra ngoài middleware
+
 // Route xem profile công khai và tìm kiếm user
 Route::get('/user/{id}', [UserController::class, 'getProfile']);
 Route::get('/users/search', [UserController::class, 'searchUsers']);
@@ -25,7 +28,6 @@ Route::get('/users/search', [UserController::class, 'searchUsers']);
 Route::middleware(\App\Http\Middleware\AuthTokenMiddleware::class)->group(function () {
     // Auth routes
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::post('/refresh-token', [AuthController::class, 'refreshToken']);
     Route::get('/me', [AuthController::class, 'me']);
 
     // Route cập nhật thông tin người dùng

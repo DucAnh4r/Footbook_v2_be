@@ -7,12 +7,12 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        // Kiểm tra dữ liệu đầu vào
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -30,14 +30,12 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // Tạo access token
         $accessToken = Str::random(80);
 
-        // Tạo user
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'password_hash' => $request->password, // Sẽ tự động hash qua Mutator
+            'password_hash' => $request->password,
             'birth_year' => $request->birth_year,
             'profession' => $request->profession,
             'auth_provider' => $request->auth_provider,
@@ -46,21 +44,20 @@ class AuthController extends Controller
             'address' => $request->address,
             'status' => $request->status,
             'access_token' => $accessToken,
-            'token_expires_at' => now()->addDays(30) // Token hết hạn sau 30 ngày
+            'token_expires_at' => now()->addDays(30)
         ]);
 
         return response()->json([
             'message' => 'User registered successfully',
-            'user' => $user->makeHidden(['access_token']), // Ẩn token trong response user
+            'user' => $user->makeHidden(['access_token']),
             'access_token' => $accessToken,
             'token_type' => 'Bearer',
-            'expires_in' => 30 * 24 * 60 * 60 // 30 ngày tính bằng giây
+            'expires_in' => 30 * 24 * 60 * 60
         ], 201);
     }
 
     public function login(Request $request)
     {
-        // Kiểm tra dữ liệu đầu vào
         $validator = Validator::make($request->all(), [
             'email' => 'required|string|email',
             'password' => 'required|string',
@@ -70,32 +67,27 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // Tìm user theo email
         $user = User::where('email', $request->email)->first();
 
-        // Kiểm tra user tồn tại và mật khẩu đúng
         if (!$user || !Hash::check($request->password, $user->password_hash)) {
             return response()->json([
                 'message' => 'Email hoặc mật khẩu không đúng'
             ], 401);
         }
 
-        // Tạo access token mới
         $accessToken = Str::random(80);
         
-        // Cập nhật token cho user
         $user->update([
             'access_token' => $accessToken,
             'token_expires_at' => now()->addDays(30)
         ]);
 
-        // Đăng nhập thành công
         return response()->json([
             'message' => 'Đăng nhập thành công',
-            'user' => $user->makeHidden(['access_token']), // Ẩn token trong response user
+            'user' => $user->makeHidden(['access_token']),
             'access_token' => $accessToken,
             'token_type' => 'Bearer',
-            'expires_in' => 30 * 24 * 60 * 60 // 30 ngày tính bằng giây
+            'expires_in' => 30 * 24 * 60 * 60
         ]);
     }
 
@@ -104,7 +96,6 @@ class AuthController extends Controller
         $user = $request->user();
         
         if ($user) {
-            // Xóa access token
             $user->update([
                 'access_token' => null,
                 'token_expires_at' => null
@@ -122,8 +113,26 @@ class AuthController extends Controller
 
     public function refreshToken(Request $request)
     {
-        $user = $request->user();
+        // Lấy token từ header Authorization
+        $authHeader = $request->header('Authorization');
+        Log::info('Refresh token request', ['authHeader' => $authHeader]);
         
+        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+            Log::info('Token not provided');
+            return response()->json([
+                'message' => 'Token không được cung cấp',
+                'error_code' => 'MISSING_TOKEN'
+            ], 401);
+        }
+
+        // Lấy token (bỏ phần "Bearer ")
+        $token = substr($authHeader, 7);
+        Log::info('Token extracted', ['token' => $token]);
+
+        // Tìm user với token này
+        $user = User::where('access_token', $token)->first();
+        Log::info('User lookup', ['user_found' => !is_null($user), 'token' => $token]);
+
         if ($user) {
             // Tạo token mới
             $accessToken = Str::random(80);
@@ -141,8 +150,10 @@ class AuthController extends Controller
             ]);
         }
 
+        Log::info('Token invalid', ['token' => $token]);
         return response()->json([
-            'message' => 'Token không hợp lệ'
+            'message' => 'Token không hợp lệ',
+            'error_code' => 'INVALID_TOKEN'
         ], 401);
     }
 
