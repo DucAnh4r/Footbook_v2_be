@@ -24,16 +24,31 @@ class User extends Authenticatable
         'avatar_url',
         'cover_photo_url',
         'address',
-        'status'
+        'status',
+        'access_token',
+        'token_expires_at'
     ];
 
     protected $hidden = [
         'password_hash',
+        'access_token', // Ẩn access token trong response
+    ];
+
+    protected $casts = [
+        'token_expires_at' => 'datetime',
     ];
 
     public function setPasswordHashAttribute($value)
     {
         $this->attributes['password_hash'] = Hash::make($value);
+    }
+
+    // Kiểm tra token có hợp lệ không
+    public function isTokenValid()
+    {
+        return $this->access_token && 
+               $this->token_expires_at && 
+               $this->token_expires_at->isFuture();
     }
 
     // Gửi lời mời kết bạn

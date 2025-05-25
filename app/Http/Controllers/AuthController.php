@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -29,6 +30,9 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
+        // Tạo access token
+        $accessToken = Str::random(80);
+
         // Tạo user
         $user = User::create([
             'name' => $request->name,
@@ -40,12 +44,17 @@ class AuthController extends Controller
             'avatar_url' => $request->avatar_url,
             'cover_photo_url' => $request->cover_photo_url,
             'address' => $request->address,
-            'status' => $request->status
+            'status' => $request->status,
+            'access_token' => $accessToken,
+            'token_expires_at' => now()->addDays(30) // Token hết hạn sau 30 ngày
         ]);
 
         return response()->json([
             'message' => 'User registered successfully',
-            'user' => $user
+            'user' => $user->makeHidden(['access_token']), // Ẩn token trong response user
+            'access_token' => $accessToken,
+            'token_type' => 'Bearer',
+            'expires_in' => 30 * 24 * 60 * 60 // 30 ngày tính bằng giây
         ], 201);
     }
 
@@ -71,12 +80,85 @@ class AuthController extends Controller
             ], 401);
         }
 
+        // Tạo access token mới
+        $accessToken = Str::random(80);
+        
+        // Cập nhật token cho user
+        $user->update([
+            'access_token' => $accessToken,
+            'token_expires_at' => now()->addDays(30)
+        ]);
+
         // Đăng nhập thành công
         return response()->json([
             'message' => 'Đăng nhập thành công',
-            'user' => $user
+            'user' => $user->makeHidden(['access_token']), // Ẩn token trong response user
+            'access_token' => $accessToken,
+            'token_type' => 'Bearer',
+            'expires_in' => 30 * 24 * 60 * 60 // 30 ngày tính bằng giây
         ]);
     }
 
-    
+    public function logout(Request $request)
+    {
+        $user = $request->user();
+        
+        if ($user) {
+            // Xóa access token
+            $user->update([
+                'access_token' => null,
+                'token_expires_at' => null
+            ]);
+
+            return response()->json([
+                'message' => 'Đăng xuất thành công'
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Token không hợp lệ'
+        ], 401);
+    }
+
+    public function refreshToken(Request $request)
+    {
+        $user = $request->user();
+        
+        if ($user) {
+            // Tạo token mới
+            $accessToken = Str::random(80);
+            
+            $user->update([
+                'access_token' => $accessToken,
+                'token_expires_at' => now()->addDays(30)
+            ]);
+
+            return response()->json([
+                'message' => 'Token đã được làm mới',
+                'access_token' => $accessToken,
+                'token_type' => 'Bearer',
+                'expires_in' => 30 * 24 * 60 * 60
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Token không hợp lệ'
+        ], 401);
+    }
+
+    public function me(Request $request)
+    {
+        $user = $request->user();
+        
+        if ($user) {
+            return response()->json([
+                'message' => 'Thông tin người dùng hiện tại',
+                'user' => $user
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Token không hợp lệ'
+        ], 401);
+    }
 }

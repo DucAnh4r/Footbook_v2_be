@@ -12,190 +12,201 @@ use App\Http\Controllers\GroupChatController;
 use App\Http\Controllers\ReactionController;
 use App\Http\Controllers\GroupController;
 
+// ===== ROUTES KHÔNG CẦN XÁC THỰC =====
 // Route đăng ký và đăng nhập
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+// Route xem profile công khai và tìm kiếm user
 Route::get('/user/{id}', [UserController::class, 'getProfile']);
 Route::get('/users/search', [UserController::class, 'searchUsers']);
 
-// Route cập nhật thông tin người dùng
-Route::post('/update-avatar', [UserController::class, 'updateAvatar']);
-Route::post('/update-profile', [UserController::class, 'updateProfile']);
+// ===== ROUTES CẦN XÁC THỰC =====
+Route::middleware(\App\Http\Middleware\AuthTokenMiddleware::class)->group(function () {
+    // Auth routes
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/refresh-token', [AuthController::class, 'refreshToken']);
+    Route::get('/me', [AuthController::class, 'me']);
 
-// Routes cho chức năng relationships
-Route::prefix('relationships')->group(function () {
-    // Gửi lời mời kết bạn
-    Route::post('/send-request', [RelationshipController::class, 'sendFriendRequest']);
+    // Route cập nhật thông tin người dùng
+    Route::post('/update-avatar', [UserController::class, 'updateAvatar']);
+    Route::post('/update-profile', [UserController::class, 'updateProfile']);
+    Route::post('/change-password', [UserController::class, 'changePassword']);
 
-    // Chấp nhận lời mời kết bạn
-    Route::put('/accept-request', [RelationshipController::class, 'acceptFriendRequest']);
+    // Routes cho chức năng relationships
+    Route::prefix('relationships')->group(function () {
+        // Gửi lời mời kết bạn
+        Route::post('/send-request', [RelationshipController::class, 'sendFriendRequest']);
 
-    // Từ chối lời mời kết bạn
-    Route::put('/decline-request', [RelationshipController::class, 'declineFriendRequest']);
+        // Chấp nhận lời mời kết bạn
+        Route::put('/accept-request', [RelationshipController::class, 'acceptFriendRequest']);
 
-    // Chặn người dùng
-    Route::put('/block', [RelationshipController::class, 'blockUser']);
+        // Từ chối lời mời kết bạn
+        Route::put('/decline-request', [RelationshipController::class, 'declineFriendRequest']);
 
-    // Bỏ chặn người dùng
-    Route::put('/unblock', [RelationshipController::class, 'unblockUser']);
+        // Chặn người dùng
+        Route::put('/block', [RelationshipController::class, 'blockUser']);
 
-    // Hủy kết bạn
-    Route::delete('/unfriend', [RelationshipController::class, 'unfriend']);
+        // Bỏ chặn người dùng
+        Route::put('/unblock', [RelationshipController::class, 'unblockUser']);
 
-    // Lấy danh sách lời mời kết bạn đã gửi
-    Route::get('/sent-requests', [RelationshipController::class, 'getSentFriendRequests']);
+        // Hủy kết bạn
+        Route::delete('/unfriend', [RelationshipController::class, 'unfriend']);
 
-    // Lấy danh sách lời mời kết bạn đã nhận
-    Route::get('/received-requests', [RelationshipController::class, 'getReceivedFriendRequests']);
+        // Lấy danh sách lời mời kết bạn đã gửi
+        Route::get('/sent-requests', [RelationshipController::class, 'getSentFriendRequests']);
 
-    // Lấy danh sách bạn bè
-    Route::get('/friends', [RelationshipController::class, 'getFriends']);
+        // Lấy danh sách lời mời kết bạn đã nhận
+        Route::get('/received-requests', [RelationshipController::class, 'getReceivedFriendRequests']);
 
-    // Đếm số lượng bạn bè
-    Route::get('/count', [RelationshipController::class, 'countFriends']);
+        // Lấy danh sách bạn bè
+        Route::get('/friends', [RelationshipController::class, 'getFriends']);
 
-    // Kiểm tra trạng thái mối quan hệ
-    Route::get('/check-status', [RelationshipController::class, 'checkRelationshipStatus']);
+        // Đếm số lượng bạn bè
+        Route::get('/count', [RelationshipController::class, 'countFriends']);
 
-    Route::get('/suggested', [RelationshipController::class, 'getSuggestedFriends']);
-});
+        // Kiểm tra trạng thái mối quan hệ
+        Route::get('/check-status', [RelationshipController::class, 'checkRelationshipStatus']);
 
-// Routes for posts
-Route::prefix('post')->group(function () {
-    // Create post
-    Route::post('/create', [PostController::class, 'createPost']);
+        Route::get('/suggested', [RelationshipController::class, 'getSuggestedFriends']);
+    });
 
-    // Get post details
-    Route::get('/{id}', [PostController::class, 'getPost']);
+    // Routes for posts
+    Route::prefix('post')->group(function () {
+        // Create post
+        Route::post('/create', [PostController::class, 'createPost']);
 
-    // ✅ Update post content
-    Route::put('/update-content', [PostController::class, 'updatePostContent']);
+        // Get post details
+        Route::get('/{id}', [PostController::class, 'getPost']);
 
-    // ✅ Add image to post
-    Route::post('/add-image', [PostController::class, 'addImageToPost']);
+        // Update post content
+        Route::put('/update-content', [PostController::class, 'updatePostContent']);
 
-    // ✅ Delete image from post
-    Route::delete('/delete-image', [PostController::class, 'deleteImageFromPost']);
+        // Add image to post
+        Route::post('/add-image', [PostController::class, 'addImageToPost']);
 
-    // Delete post
-    Route::delete('/delete', [PostController::class, 'deletePost']);
+        // Delete image from post
+        Route::delete('/delete-image', [PostController::class, 'deleteImageFromPost']);
 
-    // Get user's posts
-    Route::get('/user/posts', [PostController::class, 'getUserPosts']);
+        // Delete post
+        Route::delete('/delete', [PostController::class, 'deletePost']);
 
-    // Get feed posts
-    Route::get('/feed/{user_id}', [PostController::class, 'getFeedPosts']);
+        // Get user's posts
+        Route::get('/user/posts', [PostController::class, 'getUserPosts']);
 
-    // Get user's images
-    Route::get('/user/images', [PostController::class, 'getUserImages']);
+        // Get feed posts
+        Route::get('/feed/{user_id}', [PostController::class, 'getFeedPosts']);
 
-    // Share post
-    Route::post('/share', [PostController::class, 'sharePost']);
+        // Get user's images
+        Route::get('/user/images', [PostController::class, 'getUserImages']);
 
-    // Get shared post with original post details
-    Route::get('/shared/{id}', [PostController::class, 'getSharedPost']);
+        // Share post
+        Route::post('/share', [PostController::class, 'sharePost']);
 
-    // Get shares count and details for a post
-    Route::get('/{post_id}/shares', [PostController::class, 'getPostShares']);
-});
+        // Get shared post with original post details
+        Route::get('/shared/{id}', [PostController::class, 'getSharedPost']);
 
-// Routes for comments
-Route::prefix('comments')->group(function () {
-    // Add comment (đã hỗ trợ parent_id để thêm trả lời)
-    Route::post('/add', [CommentController::class, 'addComment']);
+        // Get shares count and details for a post
+        Route::get('/{post_id}/shares', [PostController::class, 'getPostShares']);
+    });
 
-    // Update comment
-    Route::put('/update', [CommentController::class, 'updateComment']);
+    // Routes for comments
+    Route::prefix('comments')->group(function () {
+        // Add comment (đã hỗ trợ parent_id để thêm trả lời)
+        Route::post('/add', [CommentController::class, 'addComment']);
 
-    // Delete comment
-    Route::delete('/delete', [CommentController::class, 'deleteComment']);
+        // Update comment
+        Route::put('/update', [CommentController::class, 'updateComment']);
 
-    // Get post comments (chỉ lấy comment gốc)
-    Route::get('/post', [CommentController::class, 'getPostComments']);
-    
-    // Route mới: Get replies for a comment
-    Route::get('/replies', [CommentController::class, 'getCommentReplies']);
+        // Delete comment
+        Route::delete('/delete', [CommentController::class, 'deleteComment']);
 
-    // Get comment count for a post (cập nhật đếm cả parent comments và replies)
-    Route::get('/count', [CommentController::class, 'getPostCommentCount']);
-});
+        // Get post comments (chỉ lấy comment gốc)
+        Route::get('/post', [CommentController::class, 'getPostComments']);
+        
+        // Route mới: Get replies for a comment
+        Route::get('/replies', [CommentController::class, 'getCommentReplies']);
 
-// Routes for reactions
-Route::prefix('reactions')->group(function () {
-    // React to post
-    Route::post('/react', [ReactionController::class, 'reactToPost']);
+        // Get comment count for a post (cập nhật đếm cả parent comments và replies)
+        Route::get('/count', [CommentController::class, 'getPostCommentCount']);
+    });
 
-    // Remove reaction
-    Route::delete('/remove', [ReactionController::class, 'removeReaction']);
+    // Routes for reactions
+    Route::prefix('reactions')->group(function () {
+        // React to post
+        Route::post('/react', [ReactionController::class, 'reactToPost']);
 
-    // Get post reactions
-    Route::get('/post/{post_id}', [ReactionController::class, 'getPostReactions']);
-});
+        // Remove reaction
+        Route::delete('/remove', [ReactionController::class, 'removeReaction']);
 
-// Routes for groups
-Route::prefix('groups')->group(function () {
-    // Create group
-    Route::post('/create', [GroupController::class, 'createGroup']);
+        // Get post reactions
+        Route::get('/post/{post_id}', [ReactionController::class, 'getPostReactions']);
+    });
 
-    // Get group details
-    Route::get('/{id}', [GroupController::class, 'getGroup']);
+    // Routes for groups
+    Route::prefix('groups')->group(function () {
+        // Create group
+        Route::post('/create', [GroupController::class, 'createGroup']);
 
-    // Update group information
-    Route::put('/update', [GroupController::class, 'updateGroup']);
+        // Get group details
+        Route::get('/{id}', [GroupController::class, 'getGroup']);
 
-    // Delete group
-    Route::delete('/delete', [GroupController::class, 'deleteGroup']);
+        // Update group information
+        Route::put('/update', [GroupController::class, 'updateGroup']);
 
-    // Add member to group
-    Route::post('/members/add', [GroupController::class, 'addMember']);
+        // Delete group
+        Route::delete('/delete', [GroupController::class, 'deleteGroup']);
 
-    // Remove member from group
-    Route::delete('/members/remove', [GroupController::class, 'removeMember']);
+        // Add member to group
+        Route::post('/members/add', [GroupController::class, 'addMember']);
 
-    // Get group members
-    Route::get('/{group_id}/members', [GroupController::class, 'getGroupMembers']);
+        // Remove member from group
+        Route::delete('/members/remove', [GroupController::class, 'removeMember']);
 
-    // Get group posts (user_id is optional)
-    Route::get('/{group_id}/posts/{user_id?}', [GroupController::class, 'getGroupPosts']);
+        // Get group members
+        Route::get('/{group_id}/members', [GroupController::class, 'getGroupMembers']);
 
-    // Get user's groups
-    Route::get('/user/{user_id}', [GroupController::class, 'getUserGroups']);
+        // Get group posts (user_id is optional)
+        Route::get('/{group_id}/posts/{user_id?}', [GroupController::class, 'getGroupPosts']);
 
-    // Search for groups
-    Route::get('/search/{query}', [GroupController::class, 'searchGroups']);
-});
+        // Get user's groups
+        Route::get('/user/{user_id}', [GroupController::class, 'getUserGroups']);
 
-Route::prefix('chat')->group(function () {
-    Route::post('/send', [ChatController::class, 'sendMessage']); // Gửi tin nhắn
-    Route::get('/conversation/between/{user1_id}/{user2_id}', [App\Http\Controllers\ChatController::class, 'getConversationBetweenUsers']);
-    Route::get('/conversation/{id}', [ChatController::class, 'getMessages']); // Lấy tin nhắn
-    Route::get('/user/{id}/conversations', [ChatController::class, 'getUserConversations']); // Lấy danh sách cuộc trò chuyện
-});
+        // Search for groups
+        Route::get('/search/{query}', [GroupController::class, 'searchGroups']);
+    });
 
-// Group Chat Routes
-Route::prefix('group-chat')->group(function () {
-    // Tạo nhóm chat mới
-    Route::post('/create', [GroupChatController::class, 'createGroupChat']);
+    Route::prefix('chat')->group(function () {
+        Route::post('/send', [ChatController::class, 'sendMessage']); // Gửi tin nhắn
+        Route::get('/conversation/between/{user1_id}/{user2_id}', [App\Http\Controllers\ChatController::class, 'getConversationBetweenUsers']);
+        Route::get('/conversation/{id}', [ChatController::class, 'getMessages']); // Lấy tin nhắn
+        Route::get('/user/{id}/conversations', [ChatController::class, 'getUserConversations']); // Lấy danh sách cuộc trò chuyện
+    });
 
-    // Gửi tin nhắn nhóm
-    Route::post('/send', [GroupChatController::class, 'sendGroupMessage']);
+    // Group Chat Routes
+    Route::prefix('group-chat')->group(function () {
+        // Tạo nhóm chat mới
+        Route::post('/create', [GroupChatController::class, 'createGroupChat']);
 
-    // Lấy tin nhắn của nhóm
-    Route::get('/{group_id}/messages', [GroupChatController::class, 'getGroupMessages']);
+        // Gửi tin nhắn nhóm
+        Route::post('/send', [GroupChatController::class, 'sendGroupMessage']);
 
-    // Lấy danh sách nhóm chat của người dùng
-    Route::get('/user/{user_id}/groups', [GroupChatController::class, 'getUserGroupChats']);
+        // Lấy tin nhắn của nhóm
+        Route::get('/{group_id}/messages', [GroupChatController::class, 'getGroupMessages']);
 
-    // Thêm thành viên vào nhóm
-    Route::post('/members/add', [GroupChatController::class, 'addGroupMember']);
+        // Lấy danh sách nhóm chat của người dùng
+        Route::get('/user/{user_id}/groups', [GroupChatController::class, 'getUserGroupChats']);
 
-    // Xóa thành viên khỏi nhóm
-    Route::post('/members/remove', [GroupChatController::class, 'removeGroupMember']);
+        // Thêm thành viên vào nhóm
+        Route::post('/members/add', [GroupChatController::class, 'addGroupMember']);
 
-    // Lấy danh sách thành viên của nhóm
-    Route::get('/{group_id}/members', [GroupChatController::class, 'getGroupMembers']);
+        // Xóa thành viên khỏi nhóm
+        Route::post('/members/remove', [GroupChatController::class, 'removeGroupMember']);
 
-    // Cập nhật thông tin nhóm
-    Route::put('/update', [GroupChatController::class, 'updateGroupChat']);
+        // Lấy danh sách thành viên của nhóm
+        Route::get('/{group_id}/members', [GroupChatController::class, 'getGroupMembers']);
+
+        // Cập nhật thông tin nhóm
+        Route::put('/update', [GroupChatController::class, 'updateGroupChat']);
+    });
 });
