@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Post;
 use App\Models\PostImage;
+use App\Models\Relationship;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 
@@ -225,7 +226,83 @@ class PostController extends Controller
     /**
      * Get user's posts
      */
+    /**
+     * Get user's posts based on relationship with the requester
+     */
     public function getUserPosts(Request $request)
+    {
+        // Validate input data
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'myId' => 'required|exists:users,id',
+            'limit' => 'nullable|integer|min:1',
+            'offset' => 'nullable|integer|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // Set pagination parameters
+        $limit = $request->limit ?? 10;
+        $offset = $request->offset ?? 0;
+
+        // Find user
+        $user = User::find($request->user_id);
+        if (!$user) {
+            return response()->json(['message' => 'Không tìm thấy người dùng'], 404);
+        }
+
+        // Check relationship status
+        $relationship = Relationship::where(function ($query) use ($request) {
+            $query->where('requester_id', $request->myId)
+                ->where('addressee_id', $request->user_id);
+        })->orWhere(function ($query) use ($request) {
+            $query->where('requester_id', $request->user_id)
+                ->where('addressee_id', $request->myId);
+        })->first();
+
+        // Build query for posts
+        $query = Post::with(['user', 'images', 'comments', 'reactions'])
+            ->where('user_id', $request->user_id)
+            ->where('isDeleted', false)
+            ->orderBy('created_at', 'desc');
+
+        // If myId is the same as user_id, get all posts (including secret)
+        if ($request->myId == $request->user_id) {
+            // No privacy filter needed
+        }
+        // If they are friends, get public and friends posts
+        elseif ($relationship && $relationship->status == 'accepted') {
+            $query->whereIn('privacy', ['public', 'friends']);
+        }
+        // If not friends, get only public posts
+        else {
+            $query->where('privacy', 'public');
+        }
+
+        // Apply pagination
+        $posts = $query->limit($limit)
+            ->offset($offset)
+            ->get();
+
+        // Check if no posts are found
+        if ($posts->isEmpty()) {
+            return response()->json([
+                'message' => 'Không có bài viết nào phù hợp',
+                'posts' => []
+            ], 200);
+        }
+
+        return response()->json([
+            'posts' => $posts
+        ]);
+    }
+
+    /**
+     * Get all posts of the authenticated user
+     */
+    public function getMyPosts(Request $request)
     {
         // Validate input data
         $validator = Validator::make($request->all(), [
@@ -242,13 +319,28 @@ class PostController extends Controller
         $limit = $request->limit ?? 10;
         $offset = $request->offset ?? 0;
 
-        // Get posts
+        // Find user
+        $user = User::find($request->user_id);
+        if (!$user) {
+            return response()->json(['message' => 'Không tìm thấy người dùng'], 404);
+        }
+
+        // Get all posts of the user, including all privacy levels
         $posts = Post::with(['user', 'images', 'comments', 'reactions'])
             ->where('user_id', $request->user_id)
+            ->where('isDeleted', false)
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->offset($offset)
             ->get();
+
+        // Check if no posts are found
+        if ($posts->isEmpty()) {
+            return response()->json([
+                'message' => 'Bạn chưa có bài viết nào',
+                'posts' => []
+            ], 200);
+        }
 
         return response()->json([
             'posts' => $posts
@@ -260,7 +352,7 @@ class PostController extends Controller
      */
     public function getFeedPosts($user_id, Request $request)
     {
-        // Validate chỉ limit và offset
+        // Validate input data
         $validator = Validator::make($request->all(), [
             'limit' => 'nullable|integer|min:1',
             'offset' => 'nullable|integer|min:0',
@@ -280,38 +372,115 @@ class PostController extends Controller
         $limit = $request->limit ?? 10;
         $offset = $request->offset ?? 0;
 
-        // Get user and friends
-        $user = User::find($request->user_id);
-        $friends = $user->friends()->pluck('id')->toArray();
+        // Get friend IDs
+        $friendIds = $user->friends()->pluck('id')->toArray();
 
-        // Get posts
-        $posts = Post::with(['user', 'images', 'comments', 'reactions'])
-            ->where(function ($query) use ($user, $friends) {
-                // Bài viết công khai
-                $query->where('privacy', 'public');
+        // Get group IDs that the user is a member of
+        $groupIds = $user->groups()->pluck('groups.id')->toArray();
 
-                // Hoặc bài viết từ bạn bè có privacy là friends
-                if (!empty($friends)) {
-                    $query->orWhere(function ($q) use ($friends) {
-                        $q->whereIn('user_id', $friends)
-                            ->where('privacy', 'friends');
-                    });
-                }
+        // Build query for posts
+        $posts = Post::with([
+            'user' => function ($query) {
+                $query->select('id', 'name', 'avatar_url');
+            },
+            'images',
+            'comments' => function ($query) {
+                $query->whereNull('parent_id')->with([
+                    'user' => function ($q) {
+                        $q->select('id', 'name', 'avatar_url');
+                    },
+                    'replies' => function ($q) {
+                        $q->with(['user' => function ($q) {
+                            $q->select('id', 'name', 'avatar_url');
+                        }]);
+                    }
+                ]);
+            },
+            'reactions' => function ($query) {
+                $query->select('id', 'post_id', 'user_id', 'type')
+                    ->with(['user' => function ($q) {
+                        $q->select('id', 'name', 'avatar_url');
+                    }]);
+            },
+            'originalPost' => function ($query) {
+                $query->where('isDeleted', false)
+                    ->with([
+                        'user' => function ($q) {
+                            $q->select('id', 'name', 'avatar_url');
+                        },
+                        'images',
+                        'comments' => function ($q) {
+                            $q->whereNull('parent_id')->with([
+                                'user' => function ($q) {
+                                    $q->select('id', 'name', 'avatar_url');
+                                },
+                                'replies' => function ($q) {
+                                    $q->with(['user' => function ($q) {
+                                        $q->select('id', 'name', 'avatar_url');
+                                    }]);
+                                }
+                            ]);
+                        },
+                        'reactions' => function ($q) {
+                            $q->select('id', 'post_id', 'user_id', 'type')
+                                ->with(['user' => function ($q) {
+                                    $q->select('id', 'name', 'avatar_url');
+                                }]);
+                        }
+                    ]);
+            },
+            'group' => function ($query) {
+                $query->select('id', 'name');
+            }
+        ])
+        ->where('isDeleted', false)
+        ->where(function ($query) use ($user_id, $friendIds, $groupIds) {
+            // Public posts from anyone
+            $query->where('privacy', 'public');
 
-                // Hoặc bài viết của chính người dùng (bao gồm tất cả privacy levels)
-                $query->orWhere('user_id', $user->id);
-            })
-            ->orderBy('created_at', 'desc')
-            ->limit($limit)
-            ->offset($offset)
-            ->get();
+            // Friends' posts with 'friends' privacy
+            if (!empty($friendIds)) {
+                $query->orWhere(function ($q) use ($friendIds) {
+                    $q->whereIn('user_id', $friendIds)
+                      ->where('privacy', 'friends');
+                });
+            }
 
-        // Kiểm tra nếu không có bài viết nào
+            // User's own posts (all privacy levels)
+            $query->orWhere('user_id', $user_id);
+
+            // Posts from groups the user is a member of
+            if (!empty($groupIds)) {
+                $query->orWhere(function ($q) use ($groupIds) {
+                    $q->whereIn('group_id', $groupIds);
+                });
+            }
+        })
+        ->orderBy('created_at', 'desc')
+        ->limit($limit)
+        ->offset($offset)
+        ->get();
+
+        // Process shared posts to include original post details
+        $posts->each(function ($post) {
+            if ($post->shareId && $post->originalPost) {
+                // Original post exists and is not deleted
+                $post->originalPost->makeHidden(['isDeleted', 'shareId']);
+            } elseif ($post->shareId) {
+                // Original post is deleted or doesn't exist
+                $post->originalPost = [
+                    'isDeleted' => true,
+                    'message' => 'Bài viết gốc đã bị xóa hoặc không tồn tại'
+                ];
+            }
+        });
+
+        // Check if no posts are found
         if ($posts->isEmpty()) {
             return response()->json([
                 'message' => 'Không có bài viết nào trong feed',
                 'posts' => []
-            ], 200); // Trả về 200 thay vì 404 vì đây là tình huống hợp lệ
+            ], 200);
         }
 
         return response()->json([

@@ -78,6 +78,9 @@ Route::middleware(\App\Http\Middleware\AuthTokenMiddleware::class)->group(functi
         // Create post
         Route::post('/create', [PostController::class, 'createPost']);
 
+        // Get my posts
+        Route::get('/my-posts', [PostController::class, 'getMyPosts']);
+        
         // Get post details
         Route::get('/{id}', [PostController::class, 'getPost']);
 
