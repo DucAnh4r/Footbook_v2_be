@@ -30,6 +30,28 @@ class UserController extends Controller
         ]);
     }
 
+    public function updateCoverPhoto(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'cover_photo_url' => 'required|url',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user = User::find($request->user_id);
+        $user->cover_photo_url = $request->cover_photo_url;
+        $user->save();
+
+        return response()->json([
+            'message' => 'Cập nhật ảnh bìa thành công',
+            'user' => $user
+        ]);
+    }
+
+
     public function updateProfile(Request $request)
     {
         // Xác thực dữ liệu đầu vào

@@ -32,6 +32,7 @@ Route::middleware(\App\Http\Middleware\AuthTokenMiddleware::class)->group(functi
 
     // Route cập nhật thông tin người dùng
     Route::post('/update-avatar', [UserController::class, 'updateAvatar']);
+    Route::post('/update-cover', [UserController::class, 'updateCoverPhoto']);
     Route::post('/update-profile', [UserController::class, 'updateProfile']);
     Route::post('/change-password', [UserController::class, 'changePassword']);
 
