@@ -111,13 +111,17 @@ class PostController extends Controller
             'post_id' => 'required|exists:posts,id',
             'user_id' => 'required|exists:users,id',
             'content' => 'required|string',
+            'privacy' => 'nullable|string',
+            'theme' => 'nullable|string',
+            'images' => 'nullable|array',
+            'images.*' => 'url'
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $post = Post::where('isDeleted', 0)->find($request->post_id); // Only fetch non-deleted posts
+        $post = Post::where('isDeleted', 0)->find($request->post_id);
 
         if (!$post) {
             return response()->json(['message' => 'Không tìm thấy bài viết'], 404);
@@ -127,14 +131,53 @@ class PostController extends Controller
             return response()->json(['message' => 'Bạn không có quyền chỉnh sửa bài viết này'], 403);
         }
 
+        // Cập nhật nội dung
         $post->content = $request->content;
+        if ($request->has('privacy')) {
+            $post->privacy = $request->privacy;
+        }
+        if ($request->has('theme')) {
+            $post->theme = $request->theme;
+        }
         $post->save();
 
+        // Xử lý ảnh nếu có
+        if ($request->has('images')) {
+            $newImageUrls = $request->images;
+
+            // Lấy danh sách ảnh hiện tại
+            $existingImages = PostImage::where('post_id', $post->id)->get();
+
+            // Xóa ảnh không còn trong danh sách
+            foreach ($existingImages as $image) {
+                if (!in_array($image->image_url, $newImageUrls)) {
+                    $image->delete();
+                }
+            }
+
+            // Thêm ảnh mới nếu chưa tồn tại
+            foreach ($newImageUrls as $url) {
+                $exists = $existingImages->firstWhere('image_url', $url);
+                if (!$exists) {
+                    PostImage::create([
+                        'post_id' => $post->id,
+                        'image_url' => $url,
+                        'created_at' => now(),
+                    ]);
+                }
+            }
+        }
+
+        // Lấy lại danh sách ảnh mới
+        $updatedImages = PostImage::where('post_id', $post->id)->get();
+
         return response()->json([
-            'message' => 'Đã cập nhật nội dung bài viết thành công',
-            'post' => $post
+            'message' => 'Đã cập nhật bài viết thành công',
+            'post' => $post,
+            'images' => $updatedImages
         ]);
     }
+
 
     public function addImageToPost(Request $request)
     {
@@ -390,26 +433,26 @@ class PostController extends Controller
                 $query->select('id', 'name');
             }
         ])
-        ->where('isDeleted', 0) // Only fetch non-deleted posts
-        ->where(function ($query) use ($user_id, $friendIds, $groupIds) {
-            $query->where('privacy', 'public');
-            if (!empty($friendIds)) {
-                $query->orWhere(function ($q) use ($friendIds) {
-                    $q->whereIn('user_id', $friendIds)
-                      ->where('privacy', 'friends');
-                });
-            }
-            $query->orWhere('user_id', $user_id);
-            if (!empty($groupIds)) {
-                $query->orWhere(function ($q) use ($groupIds) {
-                    $q->whereIn('group_id', $groupIds);
-                });
-            }
-        })
-        ->orderBy('created_at', 'desc')
-        ->limit($limit)
-        ->offset($offset)
-        ->get();
+            ->where('isDeleted', 0) // Only fetch non-deleted posts
+            ->where(function ($query) use ($user_id, $friendIds, $groupIds) {
+                $query->where('privacy', 'public');
+                if (!empty($friendIds)) {
+                    $query->orWhere(function ($q) use ($friendIds) {
+                        $q->whereIn('user_id', $friendIds)
+                            ->where('privacy', 'friends');
+                    });
+                }
+                $query->orWhere('user_id', $user_id);
+                if (!empty($groupIds)) {
+                    $query->orWhere(function ($q) use ($groupIds) {
+                        $q->whereIn('group_id', $groupIds);
+                    });
+                }
+            })
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->offset($offset)
+            ->get();
 
         $posts->each(function ($post) {
             if ($post->shareId && $post->originalPost) {
